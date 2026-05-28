@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
@@ -13,6 +13,123 @@ const MODES = [
   { id: 'standard', label: '✦ Prompt Builder', desc: 'Generate image or video prompts with brand + reference context' },
   { id: 'design', label: '⬡ Full Design Generation', desc: 'Complete design brief for ChatGPT — typography, product, background, copy' },
 ]
+
+const DESIGN_FIELDS = [
+  { key: 'typography', label: 'Typography Reference', tag: 'typography', placeholder: 'Describe font style — e.g. Bold sans-serif, tight tracking, white on dark' },
+  { key: 'background', label: 'Background Reference', tag: 'background', placeholder: 'Describe background — e.g. Dark textured studio, warm earthy tones' },
+  { key: 'product', label: 'Product Treatment Reference', tag: 'product', placeholder: 'Describe product — e.g. Hero shot, centered, dramatic lighting' },
+  { key: 'color', label: 'Color Palette Reference', tag: 'color', placeholder: 'Describe colors — e.g. Black + copper + cream, high contrast' },
+]
+
+function RefPicker({ tag, refs, value, onChange, placeholder }) {
+  const [mode, setMode] = useState('text') // 'text' | 'ref' | 'upload'
+  const [uploading, setUploading] = useState(false)
+  const uploadRef = useRef()
+  const taggedRefs = refs.filter(r => r.tag === tag)
+
+  async function handleUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const path = `${user.id}/design-refs/${Date.now()}-${file.name}`
+    const { error } = await supabase.storage.from('reference-images').upload(path, file)
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('reference-images').getPublicUrl(path)
+      onChange({ type: 'image', url: publicUrl, text: '' })
+    }
+    setUploading(false)
+  }
+
+  return (
+    <div>
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', background: 'var(--bg3)', borderRadius: '8px', padding: '3px', border: '1px solid var(--border)' }}>
+        {[
+          { id: 'text', label: '✏️ Text' },
+          { id: 'ref', label: `🎨 From Board${taggedRefs.length > 0 ? ` (${taggedRefs.length})` : ''}` },
+          { id: 'upload', label: '↑ Upload' },
+        ].map(m => (
+          <button key={m.id} onClick={() => { setMode(m.id); if (m.id === 'text') onChange({ type: 'text', url: '', text: value?.text || '' }) }}
+            style={{ flex: 1, padding: '5px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, cursor: 'pointer', transition: 'all .2s', color: mode === m.id ? 'var(--blue)' : 'var(--text3)', background: mode === m.id ? 'var(--bg2)' : 'transparent', border: 'none', fontFamily: 'var(--font-ui)', letterSpacing: '.04em', textTransform: 'uppercase', boxShadow: mode === m.id ? 'var(--shadow)' : 'none', whiteSpace: 'nowrap' }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Text mode */}
+      {mode === 'text' && (
+        <input
+          value={value?.text || ''}
+          onChange={e => onChange({ type: 'text', url: '', text: e.target.value })}
+          placeholder={placeholder}
+          style={{ width: '100%', padding: '9px 12px', background: 'var(--bg3)', border: '1.5px solid var(--border)', borderRadius: '9px', color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: '12px', outline: 'none', transition: 'border-color .2s' }}
+          onFocus={e => e.target.style.borderColor = 'rgba(0,87,255,0.4)'}
+          onBlur={e => e.target.style.borderColor = 'var(--border)'}
+        />
+      )}
+
+      {/* From Reference Board */}
+      {mode === 'ref' && (
+        <div>
+          {taggedRefs.length === 0 ? (
+            <div style={{ padding: '12px', background: 'var(--bg3)', borderRadius: '9px', border: '1px dashed var(--border2)', textAlign: 'center', fontSize: '12px', color: 'var(--text3)' }}>
+              No {tag} references on board yet —
+              <button onClick={() => setMode('upload')} style={{ background: 'none', border: 'none', color: 'var(--blue)', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: '0 4px' }}>upload one</button>
+              or add from Reference Board first
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px' }}>
+              {taggedRefs.map(ref => (
+                <div key={ref.id} onClick={() => onChange({ type: 'image', url: ref.image_url, text: '' })}
+                  style={{ borderRadius: '8px', overflow: 'hidden', border: `2px solid ${value?.url === ref.image_url ? 'var(--blue)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all .2s', position: 'relative', aspectRatio: '1', background: 'var(--bg3)' }}>
+                  <img src={ref.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                  {value?.url === ref.image_url && (
+                    <div style={{ position: 'absolute', top: '4px', right: '4px', width: '18px', height: '18px', borderRadius: '50%', background: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff' }}>✓</div>
+                  )}
+                </div>
+              ))}
+              {/* Deselect option */}
+              {value?.url && (
+                <div onClick={() => onChange({ type: 'text', url: '', text: '' })}
+                  style={{ borderRadius: '8px', border: '1px dashed var(--border2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--font-mono)', background: 'var(--bg3)', transition: 'all .2s' }}>
+                  Clear
+                </div>
+              )}
+            </div>
+          )}
+          {value?.url && (
+            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.15)', borderRadius: '8px' }}>
+              <img src={value.url} alt="" style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--border)' }} />
+              <span style={{ fontSize: '11px', color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>Reference selected ✓</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upload new */}
+      {mode === 'upload' && (
+        <div>
+          <div onClick={() => uploadRef.current?.click()}
+            style={{ border: '1.5px dashed rgba(0,87,255,0.25)', borderRadius: '9px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg3)', transition: 'all .3s' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,87,255,0.5)'; e.currentTarget.style.background = 'rgba(0,87,255,0.02)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,87,255,0.25)'; e.currentTarget.style.background = 'var(--bg3)' }}>
+            <div style={{ fontSize: '20px', marginBottom: '4px' }}>↑</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '2px' }}>{uploading ? 'Uploading…' : 'Upload reference image'}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text3)' }}>JPG, PNG, WEBP</div>
+          </div>
+          <input ref={uploadRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
+          {value?.url && mode === 'upload' && (
+            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.15)', borderRadius: '8px' }}>
+              <img src={value.url} alt="" style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover' }} />
+              <span style={{ fontSize: '11px', color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>Uploaded ✓</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function PromptsContent() {
   const { id } = useParams()
@@ -29,17 +146,21 @@ function PromptsContent() {
   const [generatedPrompt, setGeneratedPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // Design mode fields
+  // Design mode
   const [designProduct, setDesignProduct] = useState('')
   const [designCopy, setDesignCopy] = useState('')
   const [designFormat, setDesignFormat] = useState('Instagram Post (1:1)')
   const [designMood, setDesignMood] = useState('')
+  const [designRefs, setDesignRefs] = useState({
+    typography: { type: 'text', url: '', text: '' },
+    background: { type: 'text', url: '', text: '' },
+    product: { type: 'text', url: '', text: '' },
+    color: { type: 'text', url: '', text: '' },
+  })
   const [generatedDesignPrompt, setGeneratedDesignPrompt] = useState('')
   const [generatingDesign, setGeneratingDesign] = useState(false)
-  const [copiedDesign, setCopiedDesign] = useState(false)
 
   useEffect(() => { fetchAll() }, [id])
   useEffect(() => {
@@ -72,11 +193,10 @@ function PromptsContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          brandSummary: summary?.summary_text || '',
+          brandSummary: summary?.summary_text || project?.brands?.summary_text || '',
           refs: refs.map(r => ({ url: r.image_url, tag: r.tag })),
           idea: ideaContext,
-          outputType,
-          tool,
+          outputType, tool,
           projectName: project?.name,
         }),
       })
@@ -93,12 +213,13 @@ function PromptsContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          brandSummary: summary?.summary_text || '',
+          brandSummary: summary?.summary_text || project?.brands?.summary_text || '',
           projectName: project?.name,
           product: designProduct,
           copy: designCopy,
           format: designFormat,
           mood: designMood,
+          designRefs,
           refs: refs.map(r => ({ url: r.image_url, tag: r.tag })),
         }),
       })
@@ -120,11 +241,17 @@ function PromptsContent() {
     setTool(TOOLS[type][0])
   }
 
+  function updateDesignRef(key, val) {
+    setDesignRefs(prev => ({ ...prev, [key]: val }))
+  }
+
   if (loading) return <LoadingScreen />
+
+  const brandSummary = summary?.summary_text || project?.brands?.summary_text || ''
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)' }}>
-      <Sidebar projectId={id} projectName={project?.name} client={project?.client} />
+      <Sidebar projectId={id} projectName={project?.name} brandName={project?.brands?.name} campaignType={project?.campaign_type} />
       <main style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ position: 'sticky', top: 0, zIndex: 10, padding: '16px 32px', background: 'rgba(248,248,252,0.9)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', animation: 'slide-down .5s ease' }}>
           <div>
@@ -151,10 +278,10 @@ function PromptsContent() {
             <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', marginBottom: '20px', boxShadow: 'var(--shadow)', animation: 'reveal .5s ease both', opacity: 0 }}>
               <Label>Context loaded</Label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                {summary && <CtxTag color="blue">✦ Brand Summary</CtxTag>}
+                {brandSummary && <CtxTag color="blue">✦ Brand Summary</CtxTag>}
                 {refs.length > 0 && <CtxTag color="teal">◈ {refs.length} References</CtxTag>}
                 {ideaContext && <CtxTag color="purple">⚡ {ideaContext.slice(0, 40)}{ideaContext.length > 40 ? '…' : ''}</CtxTag>}
-                {!summary && !refs.length && !ideaContext && <span style={{ fontSize: '12px', color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>No context — add brand summary, references, or paste an idea</span>}
+                {!brandSummary && !refs.length && !ideaContext && <span style={{ fontSize: '12px', color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>No context loaded yet</span>}
               </div>
 
               <Label>Campaign idea / brief</Label>
@@ -169,8 +296,7 @@ function PromptsContent() {
                 {['image', 'video'].map(type => (
                   <button key={type} onClick={() => handleTypeChange(type)}
                     style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: `1.5px solid ${outputType === type ? 'rgba(0,87,255,0.4)' : 'var(--border)'}`, background: outputType === type ? 'var(--blue-light)' : 'var(--bg3)', color: outputType === type ? 'var(--blue)' : 'var(--text2)', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    {type === 'image' ? '🖼 Image' : '🎬 Video'}
-                    <span style={{ fontSize: '10px', opacity: .5 }}>▼</span>
+                    {type === 'image' ? '🖼 Image' : '🎬 Video'}<span style={{ fontSize: '10px', opacity: .5 }}>▼</span>
                   </button>
                 ))}
               </div>
@@ -205,8 +331,7 @@ function PromptsContent() {
                     style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border2)', borderRadius: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>
                     {saving ? 'Saving…' : 'Save'}
                   </button>
-                  <button onClick={generate}
-                    style={{ padding: '10px 16px', background: 'transparent', border: '1px solid var(--border2)', borderRadius: '10px', fontSize: '14px', color: 'var(--text2)', cursor: 'pointer' }}>↺</button>
+                  <button onClick={generate} style={{ padding: '10px 16px', background: 'transparent', border: '1px solid var(--border2)', borderRadius: '10px', fontSize: '14px', color: 'var(--text2)', cursor: 'pointer' }}>↺</button>
                 </>}
               </div>
             </div>
@@ -219,17 +344,18 @@ function PromptsContent() {
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>⬡</div>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>Full Design Generation</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Generates a complete ChatGPT prompt — typography, product, background, copy, all in one</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Complete ChatGPT prompt — pull references directly from your Reference Board or upload new ones</div>
                 </div>
               </div>
 
               <div style={{ height: '1px', background: 'var(--border)', margin: '18px 0' }} />
 
+              {/* Basic fields */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>
                   <Label>Product / Subject</Label>
                   <input value={designProduct} onChange={e => setDesignProduct(e.target.value)}
-                    placeholder="e.g. Nike Air Max shoe, Coffee bag, Perfume bottle"
+                    placeholder="e.g. Nike Air Max, Coffee bag, Perfume bottle"
                     style={inputStyle}
                     onFocus={e => e.target.style.borderColor = 'rgba(0,87,255,0.4)'}
                     onBlur={e => e.target.style.borderColor = 'var(--border)'} />
@@ -247,31 +373,55 @@ function PromptsContent() {
               <div style={{ marginBottom: '14px' }}>
                 <Label>Copy / Text in Design</Label>
                 <textarea value={designCopy} onChange={e => setDesignCopy(e.target.value)}
-                  placeholder="e.g. Headline: 'Just Do It' · Subline: 'Summer 2025' · CTA: 'Shop Now' · Tagline: 'Fuel for Creators'"
-                  style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
+                  placeholder="e.g. Headline: 'Just Do It' · Subline: 'Summer 2025' · CTA: 'Shop Now'"
+                  style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }}
                   onFocus={e => e.target.style.borderColor = 'rgba(0,87,255,0.4)'}
                   onBlur={e => e.target.style.borderColor = 'var(--border)'} />
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <Label>Mood / Visual Direction (optional)</Label>
+              <div style={{ marginBottom: '22px' }}>
+                <Label>Overall Mood (optional)</Label>
                 <input value={designMood} onChange={e => setDesignMood(e.target.value)}
-                  placeholder="e.g. Dark luxury, Warm earthy tones, Minimal editorial, Bold street energy"
+                  placeholder="e.g. Dark luxury, Warm earthy tones, Minimal editorial"
                   style={inputStyle}
                   onFocus={e => e.target.style.borderColor = 'rgba(0,87,255,0.4)'}
                   onBlur={e => e.target.style.borderColor = 'var(--border)'} />
               </div>
 
-              {/* Context tags */}
-              {(summary || refs.length > 0) && (
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', padding: '12px 14px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: 'var(--font-mono)', marginRight: '4px' }}>Using:</span>
-                  {summary && <CtxTag color="blue">✦ Brand Summary</CtxTag>}
-                  {refs.length > 0 && <CtxTag color="teal">◈ {refs.length} References</CtxTag>}
+              {/* Reference fields */}
+              <div style={{ background: 'var(--bg3)', borderRadius: '12px', padding: '18px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Visual References</span>
+                  <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.15)', color: 'var(--blue)', fontSize: '10px', fontFamily: 'var(--font-mono)', textTransform: 'none', letterSpacing: 0 }}>
+                    Pull from Reference Board or upload new
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+                  {DESIGN_FIELDS.map(field => (
+                    <div key={field.key}>
+                      <Label>{field.label}</Label>
+                      <RefPicker
+                        tag={field.tag}
+                        refs={refs}
+                        value={designRefs[field.key]}
+                        onChange={val => updateDesignRef(field.key, val)}
+                        placeholder={field.placeholder}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Context active */}
+              {(brandSummary || refs.length > 0) && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', padding: '10px 14px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: 'var(--font-mono)', marginRight: '4px' }}>Context:</span>
+                  {brandSummary && <CtxTag color="blue">✦ Brand Summary</CtxTag>}
+                  {refs.length > 0 && <CtxTag color="teal">◈ {refs.length} Board References</CtxTag>}
                 </div>
               )}
 
-              {/* Generated design prompt */}
+              {/* Generated prompt */}
               {generatedDesignPrompt && (
                 <>
                   <Label>Generated ChatGPT Design Prompt</Label>
@@ -284,7 +434,7 @@ function PromptsContent() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={generateDesign} disabled={generatingDesign}
                   style={{ flex: 1, padding: '11px', background: generatingDesign ? 'rgba(0,87,255,0.5)' : 'var(--blue)', color: '#fff', border: 'none', borderRadius: '10px', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: generatingDesign ? 'not-allowed' : 'pointer', boxShadow: 'var(--shadow-blue)', transition: 'all .2s' }}>
-                  {generatingDesign ? '⬡ Generating Design Prompt…' : '⬡ Generate Full Design Prompt'}
+                  {generatingDesign ? '⬡ Generating…' : '⬡ Generate Full Design Prompt'}
                 </button>
                 {generatedDesignPrompt && <>
                   <CopyBtn text={generatedDesignPrompt} />
@@ -292,6 +442,7 @@ function PromptsContent() {
                     style={{ padding: '11px 20px', background: 'transparent', border: '1px solid var(--border2)', borderRadius: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>
                     {saving ? 'Saving…' : 'Save'}
                   </button>
+                  <button onClick={generateDesign} style={{ padding: '11px 16px', background: 'transparent', border: '1px solid var(--border2)', borderRadius: '10px', fontSize: '14px', color: 'var(--text2)', cursor: 'pointer' }}>↺</button>
                 </>}
               </div>
             </div>
@@ -319,8 +470,7 @@ const inputStyle = {
   background: 'var(--bg3)', border: '1.5px solid var(--border)',
   borderRadius: '10px', color: 'var(--text)',
   fontFamily: 'var(--font-ui)', fontSize: '13px',
-  outline: 'none', transition: 'border-color .2s',
-  display: 'block',
+  outline: 'none', transition: 'border-color .2s', display: 'block',
 }
 
 function Label({ children }) {
@@ -328,7 +478,11 @@ function Label({ children }) {
 }
 
 function CtxTag({ color, children }) {
-  const colors = { blue: { bg: 'var(--blue-light)', border: 'rgba(0,87,255,0.25)', text: 'var(--blue)' }, teal: { bg: 'rgba(0,200,180,0.06)', border: 'rgba(0,200,180,0.25)', text: '#00c8b4' }, purple: { bg: 'rgba(160,80,255,0.06)', border: 'rgba(160,80,255,0.25)', text: '#a050ff' } }
+  const colors = {
+    blue: { bg: 'var(--blue-light)', border: 'rgba(0,87,255,0.25)', text: 'var(--blue)' },
+    teal: { bg: 'rgba(0,200,180,0.06)', border: 'rgba(0,200,180,0.25)', text: '#00c8b4' },
+    purple: { bg: 'rgba(160,80,255,0.06)', border: 'rgba(160,80,255,0.25)', text: '#a050ff' },
+  }
   const c = colors[color]
   return <span style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontFamily: 'var(--font-mono)', border: `1px solid ${c.border}`, background: c.bg, color: c.text }}>{children}</span>
 }
@@ -345,12 +499,11 @@ function CopyBtn({ text }) {
 
 function SavedPrompt({ prompt }) {
   const [hover, setHover] = useState(false)
-  const toolColors = { image: 'var(--blue)', video: '#00c8b4' }
   return (
     <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ background: 'var(--bg2)', border: `1px solid ${hover ? 'rgba(0,87,255,0.2)' : 'var(--border)'}`, borderRadius: '12px', padding: '16px 18px', transition: 'all .25s', transform: hover ? 'translateX(3px)' : 'none', boxShadow: hover ? 'var(--shadow-hover)' : 'var(--shadow)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: toolColors[prompt.output_type] || 'var(--blue)', fontWeight: 500 }}>{prompt.tool} · {prompt.output_type}</span>
+        <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--blue)', fontWeight: 500 }}>{prompt.tool} · {prompt.output_type}</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{new Date(prompt.created_at).toLocaleDateString()}</span>
           <CopyBtn text={prompt.prompt_text} />
