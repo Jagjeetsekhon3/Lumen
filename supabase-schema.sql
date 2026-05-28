@@ -126,3 +126,47 @@ create policy "Auth users can upload references" on storage.objects
   for insert with check (bucket_id = 'reference-images' and auth.role() = 'authenticated');
 create policy "Public can read references" on storage.objects
   for select using (bucket_id = 'reference-images');
+
+-- ─────────────────────────────────────────
+-- BRANDS RESTRUCTURE — run this in Supabase SQL Editor
+-- ─────────────────────────────────────────
+
+-- Brands table (global per user, not per project)
+create table if not exists brands (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  name text not null,
+  summary_text text,
+  guidelines_url text,
+  created_at timestamp with time zone default now()
+);
+
+-- Add brand_id and campaign_type to projects
+alter table projects add column if not exists brand_id uuid references brands(id) on delete set null;
+alter table projects add column if not exists campaign_type text default 'campaign';
+
+-- Add brand_id to approved_posts so posts belong to brand not project
+create table if not exists brand_posts (
+  id uuid default uuid_generate_v4() primary key,
+  brand_id uuid references brands(id) on delete cascade,
+  image_url text not null,
+  created_at timestamp with time zone default now()
+);
+
+-- RLS
+alter table brands enable row level security;
+alter table brand_posts enable row level security;
+
+create policy "Users own their brands" on brands
+  for all using (auth.uid() = user_id);
+
+create policy "Users access own brand posts" on brand_posts
+  for all using (brand_id in (select id from brands where user_id = auth.uid()));
+
+-- Storage bucket for brand guidelines
+insert into storage.buckets (id, name, public) values ('brand-guidelines', 'brand-guidelines', false) on conflict do nothing;
+
+create policy "Auth users can upload brand guidelines" on storage.objects
+  for insert with check (bucket_id = 'brand-guidelines' and auth.role() = 'authenticated');
+create policy "Auth users can read brand guidelines" on storage.objects
+  for select using (bucket_id = 'brand-guidelines');

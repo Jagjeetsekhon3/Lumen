@@ -53,7 +53,7 @@ function PromptsContent() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/login'); return }
     const [{ data: proj }, { data: sum }, { data: refData }, { data: promptData }] = await Promise.all([
-      supabase.from('projects').select('*').eq('id', id).single(),
+      supabase.from('projects').select('*, brands(*)').eq('id', id).single(),
       supabase.from('brand_summaries').select('*').eq('project_id', id).order('created_at', { ascending: false }).limit(1).single(),
       supabase.from('reference_images').select('*').eq('project_id', id),
       supabase.from('generated_prompts').select('*').eq('project_id', id).order('created_at', { ascending: false }),

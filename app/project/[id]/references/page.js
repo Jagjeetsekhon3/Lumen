@@ -28,7 +28,7 @@ export default function ReferencesPage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/login'); return }
     const [{ data: proj }, { data: refData }] = await Promise.all([
-      supabase.from('projects').select('*').eq('id', id).single(),
+      supabase.from('projects').select('*, brands(*)').eq('id', id).single(),
       supabase.from('reference_images').select('*').eq('project_id', id).order('created_at'),
     ])
     setProject(proj)
