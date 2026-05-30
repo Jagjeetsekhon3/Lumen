@@ -69,3 +69,4 @@ button { cursor: pointer; }
   0%, 100% { filter: drop-shadow(0 0 6px rgba(0,87,255,0.25)); }
   50% { filter: drop-shadow(0 0 18px rgba(0,87,255,0.5)); }
 }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -16,6 +16,7 @@ export default function Sidebar({ projectId, projectName, brandName, campaignTyp
     { href: `${base}/brainstorm`, label: 'Brainstorm', icon: '⚡' },
     { href: `${base}/references`, label: 'References', icon: '🎨' },
     { href: `${base}/prompts`, label: 'Prompt Builder', icon: '✦' },
+    { href: `${base}/videoscript`, label: 'Video Script', icon: '🎬' },
   ]
 
   return (
@@ -42,14 +43,17 @@ export default function Sidebar({ projectId, projectName, brandName, campaignTyp
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: '16px 16px', flex: 1 }}>
+      <nav style={{ padding: '16px', flex: 1 }}>
         <div style={{ fontSize: '9px', letterSpacing: '.2em', color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px', padding: '0 8px' }}>Modules</div>
         {navItems.map(item => {
           const isActive = pathname === item.href
           return (
-            <a key={item.href} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${isActive ? 'rgba(0,87,255,0.15)' : 'transparent'}`, background: isActive ? 'var(--blue-light)' : 'transparent', color: isActive ? 'var(--blue)' : 'var(--text2)', fontSize: '13px', fontWeight: 500, marginBottom: '3px', transition: 'all .2s', textDecoration: 'none', position: 'relative' }}>
+            <a key={item.href} href={item.href}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${isActive ? 'rgba(0,87,255,0.15)' : 'transparent'}`, background: isActive ? 'var(--blue-light)' : 'transparent', color: isActive ? 'var(--blue)' : 'var(--text2)', fontSize: '13px', fontWeight: 500, marginBottom: '3px', transition: 'all .2s', textDecoration: 'none', position: 'relative' }}>
               {isActive && <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '3px', borderRadius: '0 3px 3px 0', background: 'var(--blue)' }} />}
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0, background: isActive ? 'rgba(0,87,255,0.12)' : 'var(--bg3)' }}>{item.icon}</div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0, background: isActive ? 'rgba(0,87,255,0.12)' : 'var(--bg3)' }}>
+                {item.icon}
+              </div>
               {item.label}
             </a>
           )
