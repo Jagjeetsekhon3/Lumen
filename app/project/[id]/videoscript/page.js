@@ -45,6 +45,8 @@ export default function VideoScriptPage() {
   const [framesError, setFramesError] = useState('')
   const [copiedFrameId, setCopiedFrameId] = useState(null)
   const [expandedFrameId, setExpandedFrameId] = useState(null)
+  const [savedSessions, setSavedSessions] = useState([])
+  const [loadingSession, setLoadingSession] = useState(false)
 
   // Script to video mode
   const [script, setScript] = useState('')
@@ -86,18 +88,67 @@ export default function VideoScriptPage() {
   async function fetchAll() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/login'); return }
-    const [{ data: proj }, { data: sum }, { data: refData }] = await Promise.all([
+    const [{ data: proj }, { data: sum }, { data: refData }, { data: sessData }] = await Promise.all([
       supabase.from('projects').select('*, brands(*)').eq('id', id).single(),
       supabase.from('brand_summaries').select('*').eq('project_id', id).order('created_at', { ascending: false }).limit(1).single(),
       supabase.from('reference_images').select('*').eq('project_id', id),
+      supabase.from('video_sessions').select('*').eq('project_id', id).order('created_at', { ascending: false }).limit(20),
     ])
     setProject(proj)
     setSummary(sum)
     setRefs(refData || [])
+    setSavedSessions(sessData || [])
     setLoading(false)
   }
 
   const brandSummary = summary?.summary_text || project?.brands?.summary_text || ''
+
+  // ── Save session helper ──
+  async function saveSession(sessionMode, title, tool, imageTool, filters, inputScript, outputData) {
+    try {
+      const { data } = await supabase.from('video_sessions').insert({
+        project_id: id,
+        mode: sessionMode,
+        title,
+        tool,
+        image_tool: imageTool,
+        filters,
+        input_script: inputScript,
+        output_data: outputData,
+      }).select().single()
+      if (data) setSavedSessions(prev => [data, ...prev])
+    } catch (err) { console.error('Save session failed:', err) }
+  }
+
+  async function loadSession(session) {
+    setLoadingSession(true)
+    setMode(session.mode)
+    if (session.mode === 'frames') {
+      setFrameScript(session.input_script || '')
+      setFrameTool(session.tool || 'Kling')
+      setFrameImageTool(session.image_tool || 'Midjourney')
+      if (session.filters) {
+        setFrameCamera(session.filters.camera || 'Cinematic 35mm')
+        setFrameRatio(session.filters.ratio || '16:9')
+        setFrameTheme(session.filters.theme || 'Dark & moody')
+        setFrameGrading(session.filters.grading || 'Cinematic teal & orange')
+      }
+      setFrames(session.output_data?.frames || [])
+    } else if (session.mode === 'script') {
+      setScript(session.input_script || '')
+      setTool(session.tool || 'Kling')
+      setScenes(session.output_data?.scenes || [])
+    } else if (session.mode === 'generate') {
+      setGeneratedScript(session.output_data?.script || '')
+    }
+    setLoadingSession(false)
+  }
+
+  async function deleteSession(sessionId, e) {
+    e.stopPropagation()
+    await supabase.from('video_sessions').delete().eq('id', sessionId)
+    setSavedSessions(prev => prev.filter(s => s.id !== sessionId))
+  }
 
   // ── Frames mode ──
   async function generateFrames() {
@@ -127,6 +178,13 @@ export default function VideoScriptPage() {
         setFramesError('Generation failed: ' + result.error)
       } else if (result.frames && result.frames.length > 0) {
         setFrames(result.frames)
+        await saveSession('frames',
+          `Frames · ${frameScript.slice(0, 40)}…`,
+          frameTool, frameImageTool,
+          { camera: frameCamera, ratio: frameRatio, theme: frameTheme, grading: frameGrading },
+          frameScript,
+          { frames: result.frames }
+        )
       } else {
         setFramesError('No frames returned. Try adding more detail to your script.')
       }
@@ -147,7 +205,13 @@ export default function VideoScriptPage() {
         body: JSON.stringify({ script, tool, brandSummary, refs: refs.map(r => ({ url: r.image_url, tag: r.tag })), projectName: project?.name }),
       })
       const result = await res.json()
-      if (result.scenes) setScenes(result.scenes)
+      if (result.scenes) {
+        setScenes(result.scenes)
+        await saveSession('script',
+          `Script · ${script.slice(0, 40)}…`,
+          tool, null, null, script, { scenes: result.scenes }
+        )
+      }
     } catch (err) { alert('Failed: ' + err.message) }
     setGenerating(false)
   }
@@ -220,7 +284,15 @@ export default function VideoScriptPage() {
         body: JSON.stringify({ brief: genBrief, genre: genGenre, tone: genTone, duration: genDuration, scenes: genScenes, brandSummary, projectName: project?.name }),
       })
       const result = await res.json()
-      if (result.script) setGeneratedScript(result.script)
+      if (result.script) {
+        setGeneratedScript(result.script)
+        await saveSession('generate',
+          `Script · ${genGenre} · ${genDuration}`,
+          null, null,
+          { genre: genGenre, tone: genTone, duration: genDuration },
+          genBrief, { script: result.script }
+        )
+      }
     } catch (err) { alert('Failed: ' + err.message) }
     setGeneratingScript(false)
   }
@@ -556,6 +628,53 @@ export default function VideoScriptPage() {
               {!generatingScript && !generatedScript && <EmptyState icon="✍" title="Describe your video campaign" desc="Fill in the brief, choose genre, tone, duration and number of scenes. Lumen writes a complete scene-by-scene script with visual direction — then use it directly in the Frames or Script to Video tabs." />}
             </div>
           )}
+        {/* ── SAVED SESSIONS ── */}
+        {savedSessions.length > 0 && (
+          <div style={{ padding: '0 32px 32px' }}>
+            <div style={{ height: '1px', background: 'var(--border)', marginBottom: '24px' }} />
+            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: 'var(--text3)', textTransform: 'uppercase', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              Saved Sessions
+              <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.15)', color: 'var(--blue)', fontSize: '11px', fontFamily: 'var(--font-mono)', textTransform: 'none', letterSpacing: 0 }}>{savedSessions.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {savedSessions.map(session => (
+                <div key={session.id} onClick={() => loadSession(session)}
+                  style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px', cursor: 'pointer', transition: 'all .2s', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: 'var(--shadow)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,87,255,0.2)'; e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-hover)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--shadow)' }}>
+                  {/* Mode icon */}
+                  <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+                    {session.mode === 'frames' ? '🎞' : session.mode === 'script' ? '📝' : session.mode === 'image2video' ? '🖼' : '✍'}
+                  </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title || 'Untitled session'}</div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>
+                        {new Date(session.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {new Date(session.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {session.tool && <span style={{ padding: '2px 7px', borderRadius: '5px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.15)', fontSize: '10px', color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>{session.tool}</span>}
+                      {session.image_tool && <span style={{ padding: '2px 7px', borderRadius: '5px', background: 'rgba(0,200,180,0.08)', border: '1px solid rgba(0,200,180,0.2)', fontSize: '10px', color: '#00c8b4', fontFamily: 'var(--font-mono)' }}>{session.image_tool}</span>}
+                      {session.output_data?.frames && <span style={{ padding: '2px 7px', borderRadius: '5px', background: 'rgba(160,80,255,0.06)', border: '1px solid rgba(160,80,255,0.2)', fontSize: '10px', color: '#a050ff', fontFamily: 'var(--font-mono)' }}>{session.output_data.frames.length} frames</span>}
+                      {session.output_data?.scenes && <span style={{ padding: '2px 7px', borderRadius: '5px', background: 'rgba(160,80,255,0.06)', border: '1px solid rgba(160,80,255,0.2)', fontSize: '10px', color: '#a050ff', fontFamily: 'var(--font-mono)' }}>{session.output_data.scenes.length} scenes</span>}
+                    </div>
+                  </div>
+                  {/* Load label */}
+                  <div style={{ fontSize: '11px', color: 'var(--blue)', fontFamily: 'var(--font-mono)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>Load →</span>
+                    <button onClick={e => deleteSession(session.id, e)}
+                      style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'transparent', border: 'none', color: 'var(--text3)', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,60,60,0.1)'; e.currentTarget.style.color = '#ff3c3c' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text3)' }}>
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         </div>
       </main>
     </div>

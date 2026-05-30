@@ -170,3 +170,27 @@ create policy "Auth users can upload brand guidelines" on storage.objects
   for insert with check (bucket_id = 'brand-guidelines' and auth.role() = 'authenticated');
 create policy "Auth users can read brand guidelines" on storage.objects
   for select using (bucket_id = 'brand-guidelines');
+
+-- ─────────────────────────────────────────
+-- VIDEO SESSIONS — run this in Supabase SQL Editor
+-- ─────────────────────────────────────────
+
+create table if not exists video_sessions (
+  id uuid default uuid_generate_v4() primary key,
+  project_id uuid references projects(id) on delete cascade,
+  mode text check (mode in ('frames', 'script', 'image2video', 'generate')),
+  title text,
+  tool text,
+  image_tool text,
+  filters jsonb,
+  input_script text,
+  output_data jsonb,
+  created_at timestamp with time zone default now()
+);
+
+alter table video_sessions enable row level security;
+
+create policy "Users access own project video sessions" on video_sessions
+  for all using (
+    project_id in (select id from projects where user_id = auth.uid())
+  );
