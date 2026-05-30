@@ -73,7 +73,7 @@ export default function Sidebar({ projectId, projectName, brandName, campaignTyp
       <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22cc88', animation: 'dot-beat 2s ease-in-out infinite' }} />
-          Claude active
+          Lumen active
         </div>
         <button onClick={handleSignOut} style={{ background: 'none', border: 'none', fontSize: '11px', color: 'var(--text3)', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>Sign out</button>
       </div>

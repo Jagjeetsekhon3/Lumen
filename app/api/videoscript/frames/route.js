@@ -13,7 +13,7 @@ PROJECT: ${projectName || 'Unknown'}
 BRAND CONTEXT: ${brandSummary || 'None provided.'}
 VISUAL REFERENCES: ${refSummary}
 
-VISUAL FILTERS TO APPLY TO EVERY PROMPT:
+VISUAL FILTERS — apply to every single prompt:
 - Camera: ${camera}
 - Aspect ratio: ${ratio}
 - Theme/mood: ${theme}
@@ -24,11 +24,14 @@ VISUAL FILTERS TO APPLY TO EVERY PROMPT:
 VIDEO SCRIPT:
 ${script}
 
-For each scene generate:
-1. IMAGE PROMPT — for ${imageTool}. Detailed still-frame description. Include camera type, aspect ratio, theme, grading, brand context. Ready to paste.
-2. VIDEO PROMPT — for ${videoTool}. Motion description, camera movement, duration, atmosphere. Include the theme and grading. Ready to paste.
+IMPORTANT: Even if the script is very short (single words, short phrases, or a list), treat each line or beat as a separate scene. Always generate at least 3 scenes even for very short scripts.
 
-Return ONLY valid JSON, no markdown:
+For each scene generate:
+1. IMAGE PROMPT — for ${imageTool}. Detailed still-frame description. Include camera type (${camera}), aspect ratio (${ratio}), theme (${theme}), color grading (${grading}). Minimum 30 words. Ready to paste.
+2. VIDEO PROMPT — for ${videoTool}. Motion description, camera movement, duration, atmosphere. Include theme and grading. Minimum 20 words. Ready to paste.
+
+CRITICAL: Return ONLY a valid JSON object. No markdown, no backticks, no explanation before or after. Start with { and end with }.
+
 {
   "frames": [
     {
@@ -37,8 +40,8 @@ Return ONLY valid JSON, no markdown:
       "duration": "3s",
       "camera": "${camera}",
       "description": "What happens in this scene",
-      "imagePrompt": "Complete ${imageTool} image prompt with all filters applied",
-      "videoPrompt": "Complete ${videoTool} video prompt with motion and filters"
+      "imagePrompt": "Complete ${imageTool} image prompt with all visual filters applied",
+      "videoPrompt": "Complete ${videoTool} video prompt with motion direction and filters"
     }
   ]
 }`
@@ -49,11 +52,22 @@ Return ONLY valid JSON, no markdown:
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const text = message.content[0].text.replace(/```json\n?|\n?```/g, '').trim()
+    let text = message.content[0].text.trim()
+
+    // Strip any markdown fences if present
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+
+    // Extract JSON if there's any text before/after
+    const jsonStart = text.indexOf('{')
+    const jsonEnd = text.lastIndexOf('}')
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      text = text.slice(jsonStart, jsonEnd + 1)
+    }
+
     const parsed = JSON.parse(text)
     return NextResponse.json(parsed)
   } catch (err) {
-    console.error(err)
+    console.error('Frames API error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

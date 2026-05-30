@@ -314,7 +314,7 @@ function PromptsContent() {
               <Label>Generated prompt</Label>
               <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: generatedPrompt ? 'var(--text2)' : 'var(--text3)', lineHeight: 1.85, minHeight: '110px', marginBottom: '16px' }}>
                 {generating
-                  ? <span style={{ color: 'var(--blue)', display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--blue)', display: 'inline-block', animation: 'dot-beat 1s ease-in-out infinite' }} />Claude is crafting your prompt…</span>
+                  ? <span style={{ color: 'var(--blue)', display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--blue)', display: 'inline-block', animation: 'dot-beat 1s ease-in-out infinite' }} />Lumen is crafting your prompt…</span>
                   : generatedPrompt
                     ? <>{generatedPrompt}<span style={{ display: 'inline-block', width: '2px', height: '13px', background: 'var(--blue)', marginLeft: '2px', verticalAlign: 'text-bottom', animation: 'blink 1s step-end infinite' }} /></>
                     : 'Your prompt will appear here…'}

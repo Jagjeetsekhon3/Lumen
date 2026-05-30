@@ -287,7 +287,7 @@ export default function BrandsPage() {
                       {(uploading || summarising) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.15)', borderRadius: '10px', fontSize: '12px', color: 'var(--blue)', marginBottom: '12px', fontFamily: 'var(--font-mono)' }}>
                           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--blue)', animation: 'dot-beat 1.5s ease-in-out infinite' }} />
-                          {uploading ? 'Uploading…' : 'Claude is reading your guidelines…'}
+                          {uploading ? 'Uploading…' : 'Lumen is reading your guidelines…'}
                         </div>
                       )}
                       {selectedBrand.guidelines_url && (
@@ -310,7 +310,7 @@ export default function BrandsPage() {
                         onBlur={e => e.target.style.borderColor = 'var(--border)'} />
                       <button type="submit" disabled={summarising || !pastedText.trim()}
                         style={{ width: '100%', padding: '11px', background: summarising ? 'rgba(0,87,255,0.5)' : 'var(--blue)', color: '#fff', border: 'none', borderRadius: '10px', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: summarising ? 'not-allowed' : 'pointer', boxShadow: 'var(--shadow-blue)' }}>
-                        {summarising ? '✦ Claude is reading…' : '✦ Generate Brand Summary'}
+                        {summarising ? '✦ Lumen is reading…' : '✦ Generate Brand Summary'}
                       </button>
                     </form>
                   )}

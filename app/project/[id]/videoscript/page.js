@@ -18,7 +18,7 @@ const VIDEO_DURATIONS = ['15 seconds', '30 seconds', '45 seconds', '60 seconds',
 
 const MODES = [
   { id: 'frames', icon: '🎞', label: 'Script to Frames', desc: 'Per-scene image + video prompts with full visual filters' },
-  { id: 'script', icon: '📝', label: 'Script to Video', desc: 'Paste script → Claude breaks into scenes → video prompts' },
+  { id: 'script', icon: '📝', label: 'Script to Video', desc: 'Paste script → Lumen breaks into scenes → video prompts' },
   { id: 'image2video', icon: '🖼→🎬', label: 'Image to Video', desc: 'Upload image → generate motion prompts for any tool' },
   { id: 'generate', icon: '✍', label: 'Generate Script', desc: 'Brief in → full video script out from scratch' },
 ]
@@ -122,7 +122,10 @@ export default function VideoScriptPage() {
       })
       const result = await res.json()
       if (result.frames) setFrames(result.frames)
-    } catch (err) { alert('Failed: ' + err.message) }
+    } catch (err) {
+      console.error(err)
+      alert('Generation failed: ' + err.message + '\n\nTip: Make sure your script has enough detail for Lumen to extract scenes.')
+    }
     setGeneratingFrames(false)
   }
 
@@ -256,7 +259,7 @@ export default function VideoScriptPage() {
                 {/* Script input */}
                 <Label>Paste Video Script</Label>
                 <textarea value={frameScript} onChange={e => setFrameScript(e.target.value)}
-                  placeholder="Paste your video script here — any format works. Claude will extract each scene and generate both an image prompt and a video prompt for it."
+                  placeholder="Paste your video script here — any format works. Lumen will extract each scene and generate both an image prompt and a video prompt for it."
                   style={{ width: '100%', minHeight: '140px', padding: '14px', background: 'var(--bg3)', border: '1.5px solid var(--border)', borderRadius: '12px', color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: '13px', lineHeight: 1.75, resize: 'vertical', outline: 'none', transition: 'border-color .2s', marginBottom: '20px' }}
                   onFocus={e => e.target.style.borderColor = 'rgba(0,87,255,0.4)'}
                   onBlur={e => e.target.style.borderColor = 'var(--border)'} />
@@ -320,7 +323,7 @@ export default function VideoScriptPage() {
                 </button>
               </div>
 
-              {generatingFrames && <GeneratingBar message="Claude is extracting scenes and generating image + video prompts with your visual filters…" />}
+              {generatingFrames && <GeneratingBar message="Lumen is extracting scenes and generating image + video prompts with your visual filters…" />}
 
               {frames.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -337,7 +340,7 @@ export default function VideoScriptPage() {
                 </div>
               )}
 
-              {!generatingFrames && frames.length === 0 && <EmptyState icon="🎞" title="Paste your script above" desc="Claude extracts each scene and generates both an image prompt AND a video prompt — with camera type, ratio, theme, and grading applied to every frame." />}
+              {!generatingFrames && frames.length === 0 && <EmptyState icon="🎞" title="Paste your script above" desc="Lumen extracts each scene and generates both an image prompt AND a video prompt — with camera type, ratio, theme, and grading applied to every frame." />}
             </div>
           )}
 
@@ -356,7 +359,7 @@ export default function VideoScriptPage() {
                   {generating ? <><Spinner />Generating…</> : `🎬 Generate ${tool} Prompts`}
                 </button>
               </div>
-              {generating && <GeneratingBar message={`Claude is breaking script into scenes and generating ${tool} prompts…`} />}
+              {generating && <GeneratingBar message={`Lumen is breaking script into scenes and generating ${tool} prompts…`} />}
               {scenes.length > 0 && (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -369,7 +372,7 @@ export default function VideoScriptPage() {
                   <ShotList scenes={scenes} copiedAll={copiedAll} onCopy={copyAll} />
                 </>
               )}
-              {!generating && scenes.length === 0 && <EmptyState icon="📝" title="Paste your video script above" desc="Claude reads the full script, breaks it into scenes, and generates a tool-specific prompt for each frame." />}
+              {!generating && scenes.length === 0 && <EmptyState icon="📝" title="Paste your video script above" desc="Lumen reads the full script, breaks it into scenes, and generates a tool-specific prompt for each frame." />}
             </div>
           )}
 
@@ -444,7 +447,7 @@ export default function VideoScriptPage() {
                   {generatingI2v ? <><Spinner />Generating…</> : `🖼→🎬 Generate ${i2vTool} Motion Prompt`}
                 </button>
               </div>
-              {generatingI2v && <GeneratingBar message="Claude is analysing your image and generating motion prompts…" />}
+              {generatingI2v && <GeneratingBar message="Lumen is analysing your image and generating motion prompts…" />}
               {i2vPrompts.length > 0 && i2vPrompts.map((p, i) => (
                 <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px', marginBottom: '12px', boxShadow: 'var(--shadow)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -507,7 +510,7 @@ export default function VideoScriptPage() {
                 </button>
               </div>
 
-              {generatingScript && <GeneratingBar message="Claude is writing your video script with brand context and scene-by-scene direction…" />}
+              {generatingScript && <GeneratingBar message="Lumen is writing your video script with brand context and scene-by-scene direction…" />}
 
               {generatedScript && (
                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow)', animation: 'reveal .5s ease both', opacity: 0 }}>
@@ -538,7 +541,7 @@ export default function VideoScriptPage() {
                 </div>
               )}
 
-              {!generatingScript && !generatedScript && <EmptyState icon="✍" title="Describe your video campaign" desc="Fill in the brief, choose genre, tone, duration and number of scenes. Claude writes a complete scene-by-scene script with visual direction — then use it directly in the Frames or Script to Video tabs." />}
+              {!generatingScript && !generatedScript && <EmptyState icon="✍" title="Describe your video campaign" desc="Fill in the brief, choose genre, tone, duration and number of scenes. Lumen writes a complete scene-by-scene script with visual direction — then use it directly in the Frames or Script to Video tabs." />}
             </div>
           )}
         </div>
@@ -690,7 +693,7 @@ function CtxTag({ color, children }) {
 }
 
 function GeneratingBar({ message }) {
-  return <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.2)', borderRadius: '12px', marginBottom: '20px', animation: 'reveal .3s ease both' }}><Spinner /><div><div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--blue)' }}>Claude is working…</div><div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>{message}</div></div></div>
+  return <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.2)', borderRadius: '12px', marginBottom: '20px', animation: 'reveal .3s ease both' }}><Spinner /><div><div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--blue)' }}>Lumen is working…</div><div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>{message}</div></div></div>
 }
 
 function EmptyState({ icon, title, desc }) {

@@ -165,7 +165,7 @@ function GeneratingCard() {
   return (
     <div style={{ background: 'var(--blue-light)', border: '1px solid rgba(0,87,255,0.2)', borderRadius: '12px', padding: '24px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--blue)', animation: 'dot-beat 1s ease-in-out infinite' }} />
-      <span style={{ fontSize: '13px', color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>Claude is generating ideas with your brand context…</span>
+      <span style={{ fontSize: '13px', color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>Lumen is generating ideas with your brand context…</span>
     </div>
   )
 }

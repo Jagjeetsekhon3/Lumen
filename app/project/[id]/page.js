@@ -209,7 +209,7 @@ export default function BrandVaultPage() {
                 <>
                   <UploadZone icon="📄" title="Drop brand guidelines" sub="PDF, DOC, or TXT" types={['PDF', 'DOC', 'TXT']} onClick={() => guidelinesRef.current?.click()} />
                   <input ref={guidelinesRef} type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleGuidelinesUpload} style={{ display: 'none' }} />
-                  {(uploading || summarising) && <StatusBadge>{uploading ? 'Uploading file…' : 'Claude is reading your guidelines…'}</StatusBadge>}
+                  {(uploading || summarising) && <StatusBadge>{uploading ? 'Uploading file…' : 'Lumen is reading your guidelines…'}</StatusBadge>}
                   {summary?.guidelines_url && (
                     <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'var(--shadow)' }}>
                       <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📄</div>
@@ -233,7 +233,7 @@ export default function BrandVaultPage() {
                   />
                   <button type="submit" disabled={summarising || !pastedText.trim()}
                     style={{ width: '100%', padding: '11px', background: summarising ? 'rgba(0,87,255,0.5)' : 'var(--blue)', color: '#fff', border: 'none', borderRadius: '10px', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: summarising ? 'not-allowed' : 'pointer', boxShadow: 'var(--shadow-blue)', transition: 'all .2s' }}>
-                    {summarising ? '✦ Claude is reading…' : '✦ Generate Brand Summary'}
+                    {summarising ? '✦ Lumen is reading…' : '✦ Generate Brand Summary'}
                   </button>
                   {summary && !summary.guidelines_url && (
                     <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(34,204,136,0.08)', border: '1px solid rgba(34,204,136,0.2)', borderRadius: '10px', fontSize: '12px', color: '#22cc88' }}>

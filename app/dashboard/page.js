@@ -74,9 +74,9 @@ export default function Dashboard() {
   const GUIDE_STEPS = [
     { icon: '🏢', title: 'Create a Brand', desc: 'Go to Brands and create a profile for each client. Upload guidelines once — all campaigns under that brand share the context automatically.' },
     { icon: '📁', title: 'Create a Campaign', desc: 'Back on Dashboard, create a campaign and select the brand. Name it — Summer 2025, Tropical, Winter, etc.' },
-    { icon: '⚡', title: 'Brainstorm Ideas', desc: 'Paste your brief or script from the copy team. Claude generates territories, taglines, and concepts filtered through brand context.' },
+    { icon: '⚡', title: 'Brainstorm Ideas', desc: 'Paste your brief or script from the copy team. Lumen generates territories, taglines, and concepts filtered through brand context.' },
     { icon: '🎨', title: 'Build Reference Board', desc: 'Upload images or paste Pinterest/Behance URLs. Tag each — typography, background, product, color. Auto-extract a visual brief.' },
-    { icon: '✦', title: 'Generate AI Prompts', desc: 'Select your tool — Midjourney, Kling, ChatGPT etc. Claude builds a tool-specific prompt with brand + references + idea baked in.' },
+    { icon: '✦', title: 'Generate AI Prompts', desc: 'Select your tool — Midjourney, Kling, ChatGPT etc. Lumen builds a tool-specific prompt with brand + references + idea baked in.' },
     { icon: '⬡', title: 'Full Design Generation', desc: 'Use the Full Design tab to generate a complete ChatGPT prompt — product, background, typography, copy all in one shot.' },
   ]
 
