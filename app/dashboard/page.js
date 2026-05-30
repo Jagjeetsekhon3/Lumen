@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-const CAMPAIGN_TYPES = ['Campaign', 'Design', 'Seasonal', 'Social Media', 'Launch', 'Other']
+const CAMPAIGN_TYPES = ['Campaign', 'Design', 'Video', 'Seasonal', 'Social Media', 'Launch', 'Other']
 
 export default function Dashboard() {
   const router = useRouter()
