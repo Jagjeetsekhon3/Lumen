@@ -42,6 +42,7 @@ export default function VideoScriptPage() {
   const [frameGrading, setFrameGrading] = useState('Cinematic teal & orange')
   const [frames, setFrames] = useState([])
   const [generatingFrames, setGeneratingFrames] = useState(false)
+  const [framesError, setFramesError] = useState('')
   const [copiedFrameId, setCopiedFrameId] = useState(null)
   const [expandedFrameId, setExpandedFrameId] = useState(null)
 
@@ -103,6 +104,7 @@ export default function VideoScriptPage() {
     if (!frameScript.trim()) return
     setGeneratingFrames(true)
     setFrames([])
+    setFramesError('')
     try {
       const res = await fetch('/api/videoscript/frames', {
         method: 'POST',
@@ -121,10 +123,15 @@ export default function VideoScriptPage() {
         }),
       })
       const result = await res.json()
-      if (result.frames) setFrames(result.frames)
+      if (result.error) {
+        setFramesError('Generation failed: ' + result.error)
+      } else if (result.frames && result.frames.length > 0) {
+        setFrames(result.frames)
+      } else {
+        setFramesError('No frames returned. Try adding more detail to your script.')
+      }
     } catch (err) {
-      console.error(err)
-      alert('Generation failed: ' + err.message + '\n\nTip: Make sure your script has enough detail for Lumen to extract scenes.')
+      setFramesError('Error: ' + err.message)
     }
     setGeneratingFrames(false)
   }
@@ -324,6 +331,11 @@ export default function VideoScriptPage() {
               </div>
 
               {generatingFrames && <GeneratingBar message="Lumen is extracting scenes and generating image + video prompts with your visual filters…" />}
+              {framesError && (
+                <div style={{ padding: '16px 20px', background: 'rgba(255,60,60,0.06)', border: '1px solid rgba(255,60,60,0.2)', borderRadius: '12px', marginBottom: '16px', fontSize: '13px', color: '#cc3333', fontFamily: 'var(--font-mono)' }}>
+                  ⚠ {framesError}
+                </div>
+              )}
 
               {frames.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
